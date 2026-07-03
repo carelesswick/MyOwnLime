@@ -47,23 +47,18 @@ cv::Mat ComputeGradientY(const cv::Mat& img){
 
 cv::Mat ComputeWeight(const cv::Mat& gradientx, const cv::Mat& gradienty)
 {
-    constexpr float EPS = 0.001f;//后续可更改为在全局更改EPS和高斯核的大小，这方面我还没学习
-
-    // 求绝对值
+    // 与参考 LIME 实现一致：denominator = |gradient| + 1（不是 +0.001）
+    // 这样 W ∈ [0.5, 1]，阈值 αW/ρ 变化平缓，配合 ρ 倍增形成 continuation
     cv::Mat absGradx = cv::abs(gradientx);
-
-    // Weight = 1 / (|gradient| + eps)
-    cv::Mat weightx,BlurweightX,weighty,BlurweightY,weight;
-    cv::divide(1.0f, absGradx + EPS, weightx);
-
-    // Gaussian 平滑 Weight
-    cv::GaussianBlur(weightx, BlurweightX, cv::Size(3,3), 0);
-
     cv::Mat absGrady = cv::abs(gradienty);
-    cv::divide(1.0f, absGrady + EPS, weighty);
-    cv::GaussianBlur(weighty, BlurweightY, cv::Size(3,3), 0);
 
-    cv::vconcat(BlurweightX, BlurweightY, weight);
+    cv::Mat Wx, Wy;
+    cv::divide(1.0f, absGradx + 1.0f, Wx);
+    cv::divide(1.0f, absGrady + 1.0f, Wy);
+
+    // 不加高斯模糊（与参考实现一致）
+    cv::Mat weight;
+    cv::vconcat(Wx, Wy, weight);
 
     return weight;
 }
@@ -209,43 +204,46 @@ cv::Mat SolveT(
     CV_Assert(lambda_y.size() == T_hat.size() && lambda_y.type() == CV_32FC1);
 
     // ========== 步骤1：计算 b = G + Λ/ρ ==========
-    // 对应公式：目标梯度值，x、y分量分别计算
     cv::Mat b_x = G_x + lambda_x / rho;
     cv::Mat b_y = G_y + lambda_y / rho;
 
     // ========== 步骤2：计算 b 的散度 div(b) ==========
-    // 直接复用你实现的后向差分散度，保证梯度-散度严格共轭配对
     cv::Mat div_b = ComputeDivergence(b_x, b_y);
 
     // ========== 步骤3：构造右端项 rhs ==========
-    // 对应公式：rhs = 2*T_hat - ρ * div(b)
     cv::Mat rhs = 2.0f * T_hat - rho * div_b;
 
-    // ========== 步骤4：生成频域核（优化：可提到循环外，只生成一次） ==========
+    // ========== 步骤4：生成频域实值核（纯实数，不需要转复数） ==========
     cv::Mat freq_kernel = GenerateLaplacianFreqKernel(T_hat.size(), rho);
 
     // ========== 步骤5：rhs 做正 FFT，转到频域 ==========
     cv::Mat rhs_fft;
-    // DFT_COMPLEX_OUTPUT：输出双通道复数矩阵（实部+虚部）
-    cv::dft(rhs, rhs_fft, cv::DFT_COMPLEX_OUTPUT);
+    cv::dft(rhs, rhs_fft, cv::DFT_COMPLEX_OUTPUT); // 双通道复数：通道0实部，通道1虚部
 
-    // ========== 步骤6：频域逐元素除法 ==========
-    // 把实值核转成复数格式（虚部为0），才能和复数的 rhs_fft 做除法
-    cv::Mat kernel_complex;
-    cv::Mat zeros = cv::Mat::zeros(T_hat.size(), CV_32FC1);
-    cv::merge(std::vector<cv::Mat>{freq_kernel, zeros}, kernel_complex);
+    // ========== 步骤6：频域除法 ==========
+    // 拆分复数矩阵为实部、虚部两个单通道
+    cv::Mat channels[2];
+    cv::split(rhs_fft, channels);
 
+    // 分母是纯实数，实部、虚部分别除以频域核（等价于复数除法）
+    // 注意：必须直接赋值给 channels[i]，而不能赋值给中间变量后忘记写回
+    channels[0] = channels[0] / freq_kernel;
+    channels[1] = channels[1] / freq_kernel;
+
+    // 合并回双通道复数矩阵
     cv::Mat T_fft;
-    cv::divide(rhs_fft, kernel_complex, T_fft);
+    cv::merge(channels, 2, T_fft);
 
     // ========== 步骤7：逆 FFT 转回空域，得到最优 T ==========
     cv::Mat T;
-    // DFT_SCALE：自动除以总像素数，完成归一化
-    // DFT_REAL_OUTPUT：只取实部，输出单通道矩阵（理论上虚部应为0，数值误差可忽略）
     cv::idft(T_fft, T, cv::DFT_SCALE | cv::DFT_REAL_OUTPUT);
-
-    // 强制转成单通道float，保证输出格式统一
     T.convertTo(T, CV_32FC1);
+
+    // ========== 步骤8：裁剪 T 到合理范围 ==========
+    // FFT 求解可能产生负值或极小值，导致增强阶段除法放大噪声
+    cv::max(T, 0.001f, T);
+    cv::min(T, 1.0f, T);
+
     return T;
 }
 
