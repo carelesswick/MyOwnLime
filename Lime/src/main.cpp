@@ -7,7 +7,7 @@
 
 int main()
 {
-    std::string test = "../images/3ps.jpg";
+    std::string test = "../images/10.jpg";
     cv::Mat floatimg =  GetSrc(test);
     std::vector<cv::Mat> SplitChannel = SplitSrc(floatimg);
 
