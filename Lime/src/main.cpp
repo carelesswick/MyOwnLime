@@ -9,8 +9,8 @@
 
 int main()
 {
-    std::string test = "../images/dark.png";
-    // std::string test = "../images/10.jpg";
+    // std::string test = "../images/dark.png";
+    std::string test = "../images/10.jpg";
     // std::string input_dir = "../images/";
     std::string output_dir = "../output/";
     cv::Mat floatimg =  GetSrc(test);
@@ -66,13 +66,9 @@ int main()
     float rho_scale = 2.0f;    // 每轮倍增
     int max_iter    = 10;      // ρ 倍增下 10 轮即可收敛
 
-    // 预生成频域拉普拉斯核(尺寸和rho不变,只生成一次,不用每轮都算)
-    cv::Mat freq_kernel = GenerateLaplacianFreqKernel(T.size(), rho);
-
-
+    std::cout << "开始 ADMM 迭代优化光照图,共 " << max_iter << " 轮..." << std::endl;
     cv::TickMeter tm;
     tm.start();
-    std::cout << "开始 ADMM 迭代优化光照图,共 " << max_iter << " 轮..." << std::endl;
     for (int iter = 0; iter < max_iter; iter++)
     {
         // 执行单轮迭代：T → G → Λ 依次更新
@@ -84,7 +80,10 @@ int main()
         std::cout << "第 " << iter + 1 << " 轮迭代完成, rho=" << rho << std::endl;
     }
     tm.stop(); // 停止计时
-    std::cout << "光照图优化完成!用时：" <<tm.getTimeSec() << std::endl;
+    std::cout << "光照图优化完成!Lime用时:" <<tm.getTimeSec() << std::endl;
+
+    cv::TickMeter tm2;
+    tm2.start(); //计时
 
     // ===================== 第六阶段：生成最终增强图像 =====================
     // 1. 光照图 Gamma 校正（LIME 论文公式 10）：T ← T^γ
@@ -111,12 +110,14 @@ int main()
     enhanced_img.convertTo(enhanced_8u, CV_8UC3, 255.0);
     cv::fastNlMeansDenoisingColored(enhanced_8u, enhanced_8u, 3.0f, 3.0f, 7, 21);
     enhanced_8u.convertTo(enhanced_img, CV_32FC3, 1.0 / 255.0);
+    tm2.stop(); // 停止计时
 
     // ===================== 第七阶段:结果显示与对比 =====================
     // cv::imshow("1. 原始低照度图", floatimg);
     // cv::imshow("2. 初始最大光照图", MaxLight3Channel);
     // cv::imshow("4. ADMM优化后光照图", T);
     cv::imshow("5. LIME最终增强结果", enhanced_img);
+    std::cout<<"去噪用时："<<tm2.getTimeSec()<<std::endl;
 
     cv::imwrite(output_dir + "lime.jpg", enhanced_8u);
 

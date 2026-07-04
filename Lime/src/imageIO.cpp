@@ -5,6 +5,7 @@
 cv::Mat GetSrc(const std::string& strs){ //AI说这里有问题，如果后续传字面量字符串，可能会报错，建议改成const std::string& strs
     cv::Mat FloatForm;
     cv::Mat Original = cv::imread(strs);
+    // cv::resize(Original,Original,cv::Size(1024,768));
     if (Original.empty()) {
         std::cerr << "Error: Could not open or find the image: " << strs << std::endl;
         return cv::Mat(); // 返回空Mat

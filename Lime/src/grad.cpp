@@ -228,51 +228,91 @@ cv::Mat SolveT(
     const cv::Mat& lambda_y,
     float rho)
 {
-    // ========== 输入合法性检查 ==========
     CV_Assert(!T_hat.empty() && T_hat.type() == CV_32FC1);
     CV_Assert(G_x.size() == T_hat.size() && G_x.type() == CV_32FC1);
     CV_Assert(G_y.size() == T_hat.size() && G_y.type() == CV_32FC1);
     CV_Assert(lambda_x.size() == T_hat.size() && lambda_x.type() == CV_32FC1);
     CV_Assert(lambda_y.size() == T_hat.size() && lambda_y.type() == CV_32FC1);
 
-    // ========== 步骤1：计算 b = G + Λ/ρ ==========
-    cv::Mat b_x = G_x + lambda_x / rho;
-    cv::Mat b_y = G_y + lambda_y / rho;
+    const cv::Size sz = T_hat.size();
+    const int H = sz.height;
+    const int W = sz.width;
 
-    // ========== 步骤2：计算 b 的散度 div(b) ==========
+    // ====== FFT 最优尺寸：质数尺寸（如 1039×789）比 2 的幂（如 1024×768）慢 20 倍 ======
+    const int optH = cv::getOptimalDFTSize(H);
+    const int optW = cv::getOptimalDFTSize(W);
+    const bool need_pad = (optH != H || optW != W);
+
+    // ------ Buffer 复用：padded 尺寸的 static 缓冲区 ------
+    static cv::Size  s_opt_sz(0, 0);
+    static cv::Mat   s_fft;          // padded 尺寸的频域复数矩阵
+    static cv::Mat   s_inv_kernel;   // padded 尺寸的频域核倒数
+
+    const cv::Size pad_sz(optW, optH);
+    if (pad_sz != s_opt_sz)
+    {
+        s_inv_kernel = cv::Mat(optH, optW, CV_32FC1);
+        s_opt_sz     = pad_sz;
+    }
+
+    // ====== 步骤1：b = G + Λ/ρ ======
+    const float inv_rho = 1.0f / rho;
+    cv::Mat b_x, b_y;
+    cv::scaleAdd(lambda_x, inv_rho, G_x, b_x);
+    cv::scaleAdd(lambda_y, inv_rho, G_y, b_y);
+
+    // ====== 步骤2：div(b) ======
     cv::Mat div_b = ComputeDivergence(b_x, b_y);
 
-    // ========== 步骤3：构造右端项 rhs ==========
-    cv::Mat rhs = 2.0f * T_hat - rho * div_b;
+    // ====== 步骤3：rhs = 2·T_hat - ρ·div_b ======
+    cv::Mat rhs, rhs_padded;
+    cv::scaleAdd(div_b, -rho, 2.0f * T_hat, rhs);
 
-    // ========== 步骤4：生成频域实值核（纯实数，不需要转复数） ==========
-    cv::Mat freq_kernel = GenerateLaplacianFreqKernel(T_hat.size(), rho);
+    // ====== 步骤4：生成频域核 + 倒数 ======
+    cv::Mat kernel = GenerateLaplacianFreqKernel(
+        need_pad ? pad_sz : sz, rho);
+    cv::divide(1.0f, kernel, s_inv_kernel);   // s_inv_kernel = 1/kernel
 
-    // ========== 步骤5：rhs 做正 FFT，转到频域 ==========
-    cv::Mat rhs_fft;
-    cv::dft(rhs, rhs_fft, cv::DFT_COMPLEX_OUTPUT); // 双通道复数：通道0实部，通道1虚部
+    // ====== 步骤5：rhs padding 到最优 FFT 尺寸 + 正 FFT ======
+    if (need_pad)
+    {
+        cv::copyMakeBorder(rhs, rhs_padded,
+            0, optH - H, 0, optW - W, cv::BORDER_REFLECT);
+        cv::dft(rhs_padded, s_fft, cv::DFT_COMPLEX_OUTPUT);
+    }
+    else
+    {
+        cv::dft(rhs, s_fft, cv::DFT_COMPLEX_OUTPUT);
+    }
 
-    // ========== 步骤6：频域除法 ==========
-    // 拆分复数矩阵为实部、虚部两个单通道
-    cv::Mat channels[2];
-    cv::split(rhs_fft, channels);
+    // ====== 步骤6：频域乘法（s_fft × inv_kernel，就地修改）======
+    {
+        const int   total = optH * optW;
+        float*      ptr   = s_fft.ptr<float>(0);
+        const float* invk = s_inv_kernel.ptr<float>(0);
+        for (int i = 0; i < total; i++)
+        {
+            ptr[0] *= invk[i];
+            ptr[1] *= invk[i];
+            ptr += 2;
+        }
+    }
 
-    // 分母是纯实数，实部、虚部分别除以频域核（等价于复数除法）
-    // 注意：必须直接赋值给 channels[i]，而不能赋值给中间变量后忘记写回
-    channels[0] = channels[0] / freq_kernel;
-    channels[1] = channels[1] / freq_kernel;
+    // ====== 步骤7：逆 FFT + 裁剪回原尺寸 ======
+    cv::Mat T_padded, T;
+    cv::idft(s_fft, T_padded, cv::DFT_SCALE | cv::DFT_REAL_OUTPUT);
 
-    // 合并回双通道复数矩阵
-    cv::Mat T_fft;
-    cv::merge(channels, 2, T_fft);
-
-    // ========== 步骤7：逆 FFT 转回空域，得到最优 T ==========
-    cv::Mat T;
-    cv::idft(T_fft, T, cv::DFT_SCALE | cv::DFT_REAL_OUTPUT);
+    if (need_pad)
+    {
+        T = T_padded(cv::Rect(0, 0, W, H)).clone();
+    }
+    else
+    {
+        T = T_padded;
+    }
     T.convertTo(T, CV_32FC1);
 
-    // ========== 步骤8：裁剪 T 到合理范围 ==========
-    // FFT 求解可能产生负值或极小值，导致增强阶段除法放大噪声
+    // ====== 步骤8：裁剪 T 到合理范围 ======
     cv::max(T, 0.001f, T);
     cv::min(T, 1.0f, T);
 
