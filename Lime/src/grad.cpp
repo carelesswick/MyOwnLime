@@ -20,9 +20,18 @@ cv::Mat ComputeGradientX(const cv::Mat& img){
     }
 
     for (int i = 0;i < img.rows;++i){
+        const float* img_row_ptr = img.ptr<float>(i);//读取第i行的首指针
+        float* gx_row_ptr = GradientX.ptr<float>(i);//输出的第i行的首指针
+
         for (int j = 0; j < img.cols - 1;++j){
-            GradientX.at<float>(i,j) = img.at<float>(i,j+1) - img.at<float>(i,j);
-        }//at带有性能开销 后续需要改进
+            //at在每次调用时都会检查越界的情况，存在性能开销，带有性能开销 后续需要改进
+            // GradientX.at<float>(i,j) = img.at<float>(i,j+1) - img.at<float>(i,j);
+
+
+            // 等价于指针偏移：*(gx_row_ptr + j) = *(img_row_ptr + j + 1) - *(img_row_ptr + j);
+            gx_row_ptr[j] = img_row_ptr[j + 1] - img_row_ptr[j];
+
+        }
     }
     return GradientX;
 
@@ -38,13 +47,22 @@ cv::Mat ComputeGradientY(const cv::Mat& img){
         return {};
     }
     for( int i = 0;i <img.rows - 1;++i){
+        const float* curr_row = img.ptr<float>(i);
+        const float* next_row = img.ptr<float>(i + 1);
+        float* gy_row_ptr = GradientY.ptr<float>(i);
+
+
         for(int j = 0;j < img.cols;++j){
-            GradientY.at<float>(i,j) = img.at<float>(i+1,j) - img.at<float>(i,j);
+            // GradientY.at<float>(i,j) = img.at<float>(i+1,j) - img.at<float>(i,j);
+            gy_row_ptr[j] = next_row[j] - curr_row[j];
         }
+    
     }
     return GradientY;
 }
 
+
+//权重是跟梯度有关系，目的是梯度越大的地方 说明是处于物体的边缘，那么权重就越小，不能平滑，反之，梯度越小，那么权重就越大，可以平滑
 cv::Mat ComputeWeight(const cv::Mat& gradientx, const cv::Mat& gradienty)
 {
     // 与参考 LIME 实现一致：denominator = |gradient| + 1（不是 +0.001）
@@ -56,9 +74,9 @@ cv::Mat ComputeWeight(const cv::Mat& gradientx, const cv::Mat& gradienty)
     cv::divide(1.0f, absGradx + 1.0f, Wx);
     cv::divide(1.0f, absGrady + 1.0f, Wy);
 
-    // 不加高斯模糊（与参考实现一致）
     cv::Mat weight;
     cv::vconcat(Wx, Wy, weight);
+    cv::GaussianBlur(weight, weight, cv::Size(3, 3), 0, 0);
 
     return weight;
 }
@@ -76,10 +94,14 @@ cv::Mat SoftThreshold(const cv::Mat& value,const cv::Mat& threshold)
     // 遍历每个像素
     for(int i = 0; i < value.rows; ++i)
     {
+        const float* value_row = value.ptr<float>(i);
+        const float* threshold_row = threshold.ptr<float>(i);
+        float* output_row = output.ptr<float>(i);
+
         for(int j = 0; j < value.cols; ++j)
         {
-            float d = value.at<float>(i,j);
-            float lambda = threshold.at<float>(i,j);
+            float d = value_row[j];
+            float lambda = threshold_row[j];
 
             float sign = 0.f;
             if(d > 0)
@@ -87,8 +109,7 @@ cv::Mat SoftThreshold(const cv::Mat& value,const cv::Mat& threshold)
             else if(d < 0)
                 sign = -1.f;
 
-            output.at<float>(i,j) =
-                sign * std::max(std::abs(d) - lambda, 0.0f);
+            output_row[j] = sign * std::max(std::abs(d) - lambda, 0.0f);
         }
     }
 
@@ -99,20 +120,21 @@ cv::Mat SolveG(
     const cv::Mat& T,
     const cv::Mat& Lambda,
     const cv::Mat& Weight,
+    const cv::Mat& GradientT,
     float rho,
     float alpha)
 {
     // 计算 ∇T,因为之前的梯度是分开算的，因此在这里呢需要把水平方向和竖直方向的梯度拼接起来
-    cv::Mat GradientX = ComputeGradientX(T);
-    cv::Mat GradientY = ComputeGradientY(T);
-    cv::Mat GradientT;
-    cv::vconcat(GradientX, GradientY, GradientT);
+    // cv::Mat GradientX = ComputeGradientX(T);
+    // cv::Mat GradientY = ComputeGradientY(T);
+    // cv::Mat GradientT;
+    // cv::vconcat(GradientX, GradientY, GradientT);
 
     // d = ∇T - Λ/ρ
     cv::Mat d = GradientT - Lambda / rho;
 
     // λ = αW/ρ
-    cv::Mat threshold = alpha * Weight / rho;
+    cv::Mat threshold = alpha * Weight / rho;//权重是固定的，alpha也是固定的，只有ρ是变化的
 
     // Soft Threshold
     return SoftThreshold(d, threshold);
@@ -132,18 +154,28 @@ cv::Mat ComputeDivergence(
 
     for(int i=0;i<gx.rows;i++)
     {
+        const float* gx_row = gx.ptr<float>(i);
+        const float* gy_row = gy.ptr<float>(i);
+        
+        float* div_row = div.ptr<float>(i);
+
+        const float* gy_previous_row = nullptr;
+        if(i > 0){
+            gy_previous_row = gy.ptr<float>(i-1);
+        }
+
         for(int j=0;j<gx.cols;j++)
         {
-            float dx=gx.at<float>(i,j);
-            float dy=gy.at<float>(i,j);
+            float dx=gx_row[j];
+            float dy=gy_row[j];
 
             if(j>0)
-                dx-=gx.at<float>(i,j-1);
+                dx-=gx_row[j-1];
 
             if(i>0)
-                dy-=gy.at<float>(i-1,j);
+                dy-=gy_previous_row[j];
 
-            div.at<float>(i,j)=dx+dy;
+            div_row[j]=dx+dy;
         }
     }
 
@@ -284,9 +316,7 @@ void ADMM_Step(
     cv::vconcat(grad_T_x, grad_T_y, grad_T_concat);
     cv::vconcat(lambda_x, lambda_y, lambda_concat);
 
-    // 小优化：你原来的 SolveG 内部又算了一次梯度，这里可以直接传梯度进去，避免重复计算
-    // 如果你想改，可以把 SolveG 的入参改成直接传梯度，性能更好
-    G_concat = SolveG(T, lambda_concat, weight, rho, alpha);
+    G_concat = SolveG(T, lambda_concat, weight,grad_T_concat, rho, alpha);
 
     // 拆分回 x、y 分量
     int H = T.rows;
