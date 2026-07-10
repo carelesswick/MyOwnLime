@@ -3,6 +3,7 @@
 
 #include <string>
 #include <opencv2/core.hpp>
+#include <immintrin.h>  // AVX2 指令集头文件
 
 
 //对初始最大光照图进行梯度的求解

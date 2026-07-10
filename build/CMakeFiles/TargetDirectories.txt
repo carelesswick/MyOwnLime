@@ -1,0 +1,3 @@
+/home/my2204/MyOwnLime/build/CMakeFiles/LimeDispose.dir
+/home/my2204/MyOwnLime/build/CMakeFiles/edit_cache.dir
+/home/my2204/MyOwnLime/build/CMakeFiles/rebuild_cache.dir

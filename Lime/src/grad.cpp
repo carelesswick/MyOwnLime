@@ -1,6 +1,6 @@
 #include "grade.h"
 #include <opencv2/opencv.hpp>
-
+#include <immintrin.h>  // AVX2 指令集头文件
 
 //对初始最大光照图进行梯度的求解
 //求梯度分了方向 后续进行封装
@@ -23,15 +23,30 @@ cv::Mat ComputeGradientX(const cv::Mat& img){
         const float* img_row_ptr = img.ptr<float>(i);//读取第i行的首指针
         float* gx_row_ptr = GradientX.ptr<float>(i);//输出的第i行的首指针
 
-        for (int j = 0; j < img.cols - 1;++j){
-            //at在每次调用时都会检查越界的情况，存在性能开销，带有性能开销 后续需要改进
-            // GradientX.at<float>(i,j) = img.at<float>(i,j+1) - img.at<float>(i,j);
+        // for (int j = 0; j < img.cols - 1;++j){
+        //     //at在每次调用时都会检查越界的情况，存在性能开销，带有性能开销 后续需要改进
+        //     // GradientX.at<float>(i,j) = img.at<float>(i,j+1) - img.at<float>(i,j);
+        //     gx_row_ptr[j] = img_row_ptr[j + 1] - img_row_ptr[j];
+        // }
+        int j = 0;
+        //为了保证最后一次 SIMD 循环不越界，必须满足：最后一个用到的像素下标 j+8 ≤ 最大下标 cols-1
+        for(;j <= img.cols - 9;j+=8){
+            //因为是256位向量寄存器，那么是8个一组。（此时还是在一行中进行操作）
+            __m256 curr = _mm256_loadu_ps(img_row_ptr + j);
+            __m256 next = _mm256_loadu_ps(img_row_ptr + j + 1);
 
+            //错开一位进行相减 得到梯度
+            __m256 grad = _mm256_sub_ps(next, curr);
 
-            // 等价于指针偏移：*(gx_row_ptr + j) = *(img_row_ptr + j + 1) - *(img_row_ptr + j);
-            gx_row_ptr[j] = img_row_ptr[j + 1] - img_row_ptr[j];
-
+            //将结果写回内存
+            _mm256_storeu_ps(gx_row_ptr + j, grad);
         }
+
+        //因为不一定整除，要进行兜底操作
+        for(;j < img.cols - 1;++j){
+            gx_row_ptr[j] = img_row_ptr[j + 1] - img_row_ptr[j];
+        }
+    
     }
     return GradientX;
 
@@ -51,9 +66,19 @@ cv::Mat ComputeGradientY(const cv::Mat& img){
         const float* next_row = img.ptr<float>(i + 1);
         float* gy_row_ptr = GradientY.ptr<float>(i);
 
+        int j = 0;
+        // for(int j = 0;j < img.cols;++j){
+        //     // GradientY.at<float>(i,j) = img.at<float>(i+1,j) - img.at<float>(i,j);
+        //     gy_row_ptr[j] = next_row[j] - curr_row[j];
+        // }
+        for (;j <= img.cols - 8;j+=8){
+            __m256 curr = _mm256_loadu_ps(curr_row+j);
+            __m256 next = _mm256_loadu_ps(next_row+j);
 
-        for(int j = 0;j < img.cols;++j){
-            // GradientY.at<float>(i,j) = img.at<float>(i+1,j) - img.at<float>(i,j);
+            __m256 grad = _mm256_sub_ps(next,curr);
+            _mm256_storeu_ps(gy_row_ptr + j, grad);
+        }
+        for(;j < img.cols;++j){
             gy_row_ptr[j] = next_row[j] - curr_row[j];
         }
     
