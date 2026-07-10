@@ -1,17 +1,17 @@
 [
 {
-  "directory": "/home/my2204/MyOwnLime/Lime/build",
-  "command": "/usr/bin/c++  -I/home/my2204/MyOwnLime/Lime/include -isystem /usr/include/opencv4 -std=gnu++17 -o CMakeFiles/LimeDispose.dir/src/main.cpp.o -c /home/my2204/MyOwnLime/Lime/src/main.cpp",
-  "file": "/home/my2204/MyOwnLime/Lime/src/main.cpp"
+  "directory": "/home/nano/Desktop/MyOwnLime/Lime/build",
+  "command": "/usr/bin/c++  -I/home/nano/Desktop/MyOwnLime/Lime/include -isystem /usr/include/opencv4 -std=gnu++17 -o CMakeFiles/LimeDispose.dir/src/main.cpp.o -c /home/nano/Desktop/MyOwnLime/Lime/src/main.cpp",
+  "file": "/home/nano/Desktop/MyOwnLime/Lime/src/main.cpp"
 },
 {
-  "directory": "/home/my2204/MyOwnLime/Lime/build",
-  "command": "/usr/bin/c++  -I/home/my2204/MyOwnLime/Lime/include -isystem /usr/include/opencv4 -std=gnu++17 -o CMakeFiles/LimeDispose.dir/src/imageIO.cpp.o -c /home/my2204/MyOwnLime/Lime/src/imageIO.cpp",
-  "file": "/home/my2204/MyOwnLime/Lime/src/imageIO.cpp"
+  "directory": "/home/nano/Desktop/MyOwnLime/Lime/build",
+  "command": "/usr/bin/c++  -I/home/nano/Desktop/MyOwnLime/Lime/include -isystem /usr/include/opencv4 -std=gnu++17 -o CMakeFiles/LimeDispose.dir/src/imageIO.cpp.o -c /home/nano/Desktop/MyOwnLime/Lime/src/imageIO.cpp",
+  "file": "/home/nano/Desktop/MyOwnLime/Lime/src/imageIO.cpp"
 },
 {
-  "directory": "/home/my2204/MyOwnLime/Lime/build",
-  "command": "/usr/bin/c++  -I/home/my2204/MyOwnLime/Lime/include -isystem /usr/include/opencv4 -std=gnu++17 -o CMakeFiles/LimeDispose.dir/src/grad.cpp.o -c /home/my2204/MyOwnLime/Lime/src/grad.cpp",
-  "file": "/home/my2204/MyOwnLime/Lime/src/grad.cpp"
+  "directory": "/home/nano/Desktop/MyOwnLime/Lime/build",
+  "command": "/usr/bin/c++  -I/home/nano/Desktop/MyOwnLime/Lime/include -isystem /usr/include/opencv4 -std=gnu++17 -o CMakeFiles/LimeDispose.dir/src/grad.cpp.o -c /home/nano/Desktop/MyOwnLime/Lime/src/grad.cpp",
+  "file": "/home/nano/Desktop/MyOwnLime/Lime/src/grad.cpp"
 }
 ]

@@ -53,10 +53,10 @@ RM = /usr/bin/cmake -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/my2204/MyOwnLime/Lime
+CMAKE_SOURCE_DIR = /home/nano/Desktop/MyOwnLime/Lime
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/my2204/MyOwnLime/Lime/build
+CMAKE_BINARY_DIR = /home/nano/Desktop/MyOwnLime/Lime/build
 
 # Include any dependencies generated for this target.
 include CMakeFiles/LimeDispose.dir/depend.make
@@ -72,44 +72,44 @@ include CMakeFiles/LimeDispose.dir/flags.make
 CMakeFiles/LimeDispose.dir/src/main.cpp.o: CMakeFiles/LimeDispose.dir/flags.make
 CMakeFiles/LimeDispose.dir/src/main.cpp.o: ../src/main.cpp
 CMakeFiles/LimeDispose.dir/src/main.cpp.o: CMakeFiles/LimeDispose.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/my2204/MyOwnLime/Lime/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object CMakeFiles/LimeDispose.dir/src/main.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/LimeDispose.dir/src/main.cpp.o -MF CMakeFiles/LimeDispose.dir/src/main.cpp.o.d -o CMakeFiles/LimeDispose.dir/src/main.cpp.o -c /home/my2204/MyOwnLime/Lime/src/main.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/nano/Desktop/MyOwnLime/Lime/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object CMakeFiles/LimeDispose.dir/src/main.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/LimeDispose.dir/src/main.cpp.o -MF CMakeFiles/LimeDispose.dir/src/main.cpp.o.d -o CMakeFiles/LimeDispose.dir/src/main.cpp.o -c /home/nano/Desktop/MyOwnLime/Lime/src/main.cpp
 
 CMakeFiles/LimeDispose.dir/src/main.cpp.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/LimeDispose.dir/src/main.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/my2204/MyOwnLime/Lime/src/main.cpp > CMakeFiles/LimeDispose.dir/src/main.cpp.i
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/nano/Desktop/MyOwnLime/Lime/src/main.cpp > CMakeFiles/LimeDispose.dir/src/main.cpp.i
 
 CMakeFiles/LimeDispose.dir/src/main.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/LimeDispose.dir/src/main.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/my2204/MyOwnLime/Lime/src/main.cpp -o CMakeFiles/LimeDispose.dir/src/main.cpp.s
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/nano/Desktop/MyOwnLime/Lime/src/main.cpp -o CMakeFiles/LimeDispose.dir/src/main.cpp.s
 
 CMakeFiles/LimeDispose.dir/src/imageIO.cpp.o: CMakeFiles/LimeDispose.dir/flags.make
 CMakeFiles/LimeDispose.dir/src/imageIO.cpp.o: ../src/imageIO.cpp
 CMakeFiles/LimeDispose.dir/src/imageIO.cpp.o: CMakeFiles/LimeDispose.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/my2204/MyOwnLime/Lime/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building CXX object CMakeFiles/LimeDispose.dir/src/imageIO.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/LimeDispose.dir/src/imageIO.cpp.o -MF CMakeFiles/LimeDispose.dir/src/imageIO.cpp.o.d -o CMakeFiles/LimeDispose.dir/src/imageIO.cpp.o -c /home/my2204/MyOwnLime/Lime/src/imageIO.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/nano/Desktop/MyOwnLime/Lime/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building CXX object CMakeFiles/LimeDispose.dir/src/imageIO.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/LimeDispose.dir/src/imageIO.cpp.o -MF CMakeFiles/LimeDispose.dir/src/imageIO.cpp.o.d -o CMakeFiles/LimeDispose.dir/src/imageIO.cpp.o -c /home/nano/Desktop/MyOwnLime/Lime/src/imageIO.cpp
 
 CMakeFiles/LimeDispose.dir/src/imageIO.cpp.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/LimeDispose.dir/src/imageIO.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/my2204/MyOwnLime/Lime/src/imageIO.cpp > CMakeFiles/LimeDispose.dir/src/imageIO.cpp.i
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/nano/Desktop/MyOwnLime/Lime/src/imageIO.cpp > CMakeFiles/LimeDispose.dir/src/imageIO.cpp.i
 
 CMakeFiles/LimeDispose.dir/src/imageIO.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/LimeDispose.dir/src/imageIO.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/my2204/MyOwnLime/Lime/src/imageIO.cpp -o CMakeFiles/LimeDispose.dir/src/imageIO.cpp.s
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/nano/Desktop/MyOwnLime/Lime/src/imageIO.cpp -o CMakeFiles/LimeDispose.dir/src/imageIO.cpp.s
 
 CMakeFiles/LimeDispose.dir/src/grad.cpp.o: CMakeFiles/LimeDispose.dir/flags.make
 CMakeFiles/LimeDispose.dir/src/grad.cpp.o: ../src/grad.cpp
 CMakeFiles/LimeDispose.dir/src/grad.cpp.o: CMakeFiles/LimeDispose.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/my2204/MyOwnLime/Lime/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Building CXX object CMakeFiles/LimeDispose.dir/src/grad.cpp.o"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/LimeDispose.dir/src/grad.cpp.o -MF CMakeFiles/LimeDispose.dir/src/grad.cpp.o.d -o CMakeFiles/LimeDispose.dir/src/grad.cpp.o -c /home/my2204/MyOwnLime/Lime/src/grad.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/nano/Desktop/MyOwnLime/Lime/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Building CXX object CMakeFiles/LimeDispose.dir/src/grad.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/LimeDispose.dir/src/grad.cpp.o -MF CMakeFiles/LimeDispose.dir/src/grad.cpp.o.d -o CMakeFiles/LimeDispose.dir/src/grad.cpp.o -c /home/nano/Desktop/MyOwnLime/Lime/src/grad.cpp
 
 CMakeFiles/LimeDispose.dir/src/grad.cpp.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/LimeDispose.dir/src/grad.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/my2204/MyOwnLime/Lime/src/grad.cpp > CMakeFiles/LimeDispose.dir/src/grad.cpp.i
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/nano/Desktop/MyOwnLime/Lime/src/grad.cpp > CMakeFiles/LimeDispose.dir/src/grad.cpp.i
 
 CMakeFiles/LimeDispose.dir/src/grad.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/LimeDispose.dir/src/grad.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/my2204/MyOwnLime/Lime/src/grad.cpp -o CMakeFiles/LimeDispose.dir/src/grad.cpp.s
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/nano/Desktop/MyOwnLime/Lime/src/grad.cpp -o CMakeFiles/LimeDispose.dir/src/grad.cpp.s
 
 # Object files for target LimeDispose
 LimeDispose_OBJECTS = \
@@ -124,62 +124,23 @@ LimeDispose: CMakeFiles/LimeDispose.dir/src/main.cpp.o
 LimeDispose: CMakeFiles/LimeDispose.dir/src/imageIO.cpp.o
 LimeDispose: CMakeFiles/LimeDispose.dir/src/grad.cpp.o
 LimeDispose: CMakeFiles/LimeDispose.dir/build.make
-LimeDispose: /usr/lib/x86_64-linux-gnu/libopencv_stitching.so.4.5.4d
-LimeDispose: /usr/lib/x86_64-linux-gnu/libopencv_alphamat.so.4.5.4d
-LimeDispose: /usr/lib/x86_64-linux-gnu/libopencv_aruco.so.4.5.4d
-LimeDispose: /usr/lib/x86_64-linux-gnu/libopencv_barcode.so.4.5.4d
-LimeDispose: /usr/lib/x86_64-linux-gnu/libopencv_bgsegm.so.4.5.4d
-LimeDispose: /usr/lib/x86_64-linux-gnu/libopencv_bioinspired.so.4.5.4d
-LimeDispose: /usr/lib/x86_64-linux-gnu/libopencv_ccalib.so.4.5.4d
-LimeDispose: /usr/lib/x86_64-linux-gnu/libopencv_dnn_objdetect.so.4.5.4d
-LimeDispose: /usr/lib/x86_64-linux-gnu/libopencv_dnn_superres.so.4.5.4d
-LimeDispose: /usr/lib/x86_64-linux-gnu/libopencv_dpm.so.4.5.4d
-LimeDispose: /usr/lib/x86_64-linux-gnu/libopencv_face.so.4.5.4d
-LimeDispose: /usr/lib/x86_64-linux-gnu/libopencv_freetype.so.4.5.4d
-LimeDispose: /usr/lib/x86_64-linux-gnu/libopencv_fuzzy.so.4.5.4d
-LimeDispose: /usr/lib/x86_64-linux-gnu/libopencv_hdf.so.4.5.4d
-LimeDispose: /usr/lib/x86_64-linux-gnu/libopencv_hfs.so.4.5.4d
-LimeDispose: /usr/lib/x86_64-linux-gnu/libopencv_img_hash.so.4.5.4d
-LimeDispose: /usr/lib/x86_64-linux-gnu/libopencv_intensity_transform.so.4.5.4d
-LimeDispose: /usr/lib/x86_64-linux-gnu/libopencv_line_descriptor.so.4.5.4d
-LimeDispose: /usr/lib/x86_64-linux-gnu/libopencv_mcc.so.4.5.4d
-LimeDispose: /usr/lib/x86_64-linux-gnu/libopencv_quality.so.4.5.4d
-LimeDispose: /usr/lib/x86_64-linux-gnu/libopencv_rapid.so.4.5.4d
-LimeDispose: /usr/lib/x86_64-linux-gnu/libopencv_reg.so.4.5.4d
-LimeDispose: /usr/lib/x86_64-linux-gnu/libopencv_rgbd.so.4.5.4d
-LimeDispose: /usr/lib/x86_64-linux-gnu/libopencv_saliency.so.4.5.4d
-LimeDispose: /usr/lib/x86_64-linux-gnu/libopencv_shape.so.4.5.4d
-LimeDispose: /usr/lib/x86_64-linux-gnu/libopencv_stereo.so.4.5.4d
-LimeDispose: /usr/lib/x86_64-linux-gnu/libopencv_structured_light.so.4.5.4d
-LimeDispose: /usr/lib/x86_64-linux-gnu/libopencv_superres.so.4.5.4d
-LimeDispose: /usr/lib/x86_64-linux-gnu/libopencv_surface_matching.so.4.5.4d
-LimeDispose: /usr/lib/x86_64-linux-gnu/libopencv_tracking.so.4.5.4d
-LimeDispose: /usr/lib/x86_64-linux-gnu/libopencv_videostab.so.4.5.4d
-LimeDispose: /usr/lib/x86_64-linux-gnu/libopencv_viz.so.4.5.4d
-LimeDispose: /usr/lib/x86_64-linux-gnu/libopencv_wechat_qrcode.so.4.5.4d
-LimeDispose: /usr/lib/x86_64-linux-gnu/libopencv_xobjdetect.so.4.5.4d
-LimeDispose: /usr/lib/x86_64-linux-gnu/libopencv_xphoto.so.4.5.4d
-LimeDispose: /usr/lib/x86_64-linux-gnu/libopencv_highgui.so.4.5.4d
-LimeDispose: /usr/lib/x86_64-linux-gnu/libopencv_datasets.so.4.5.4d
-LimeDispose: /usr/lib/x86_64-linux-gnu/libopencv_plot.so.4.5.4d
-LimeDispose: /usr/lib/x86_64-linux-gnu/libopencv_text.so.4.5.4d
-LimeDispose: /usr/lib/x86_64-linux-gnu/libopencv_ml.so.4.5.4d
-LimeDispose: /usr/lib/x86_64-linux-gnu/libopencv_phase_unwrapping.so.4.5.4d
-LimeDispose: /usr/lib/x86_64-linux-gnu/libopencv_optflow.so.4.5.4d
-LimeDispose: /usr/lib/x86_64-linux-gnu/libopencv_ximgproc.so.4.5.4d
-LimeDispose: /usr/lib/x86_64-linux-gnu/libopencv_video.so.4.5.4d
-LimeDispose: /usr/lib/x86_64-linux-gnu/libopencv_videoio.so.4.5.4d
-LimeDispose: /usr/lib/x86_64-linux-gnu/libopencv_imgcodecs.so.4.5.4d
-LimeDispose: /usr/lib/x86_64-linux-gnu/libopencv_objdetect.so.4.5.4d
-LimeDispose: /usr/lib/x86_64-linux-gnu/libopencv_calib3d.so.4.5.4d
-LimeDispose: /usr/lib/x86_64-linux-gnu/libopencv_dnn.so.4.5.4d
-LimeDispose: /usr/lib/x86_64-linux-gnu/libopencv_features2d.so.4.5.4d
-LimeDispose: /usr/lib/x86_64-linux-gnu/libopencv_flann.so.4.5.4d
-LimeDispose: /usr/lib/x86_64-linux-gnu/libopencv_photo.so.4.5.4d
-LimeDispose: /usr/lib/x86_64-linux-gnu/libopencv_imgproc.so.4.5.4d
-LimeDispose: /usr/lib/x86_64-linux-gnu/libopencv_core.so.4.5.4d
+LimeDispose: /usr/lib/libopencv_gapi.so.4.8.0
+LimeDispose: /usr/lib/libopencv_highgui.so.4.8.0
+LimeDispose: /usr/lib/libopencv_ml.so.4.8.0
+LimeDispose: /usr/lib/libopencv_objdetect.so.4.8.0
+LimeDispose: /usr/lib/libopencv_photo.so.4.8.0
+LimeDispose: /usr/lib/libopencv_stitching.so.4.8.0
+LimeDispose: /usr/lib/libopencv_video.so.4.8.0
+LimeDispose: /usr/lib/libopencv_videoio.so.4.8.0
+LimeDispose: /usr/lib/libopencv_imgcodecs.so.4.8.0
+LimeDispose: /usr/lib/libopencv_dnn.so.4.8.0
+LimeDispose: /usr/lib/libopencv_calib3d.so.4.8.0
+LimeDispose: /usr/lib/libopencv_features2d.so.4.8.0
+LimeDispose: /usr/lib/libopencv_flann.so.4.8.0
+LimeDispose: /usr/lib/libopencv_imgproc.so.4.8.0
+LimeDispose: /usr/lib/libopencv_core.so.4.8.0
 LimeDispose: CMakeFiles/LimeDispose.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/my2204/MyOwnLime/Lime/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Linking CXX executable LimeDispose"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/nano/Desktop/MyOwnLime/Lime/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Linking CXX executable LimeDispose"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/LimeDispose.dir/link.txt --verbose=$(VERBOSE)
 
 # Rule to build all files generated by this target.
@@ -191,6 +152,6 @@ CMakeFiles/LimeDispose.dir/clean:
 .PHONY : CMakeFiles/LimeDispose.dir/clean
 
 CMakeFiles/LimeDispose.dir/depend:
-	cd /home/my2204/MyOwnLime/Lime/build && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /home/my2204/MyOwnLime/Lime /home/my2204/MyOwnLime/Lime /home/my2204/MyOwnLime/Lime/build /home/my2204/MyOwnLime/Lime/build /home/my2204/MyOwnLime/Lime/build/CMakeFiles/LimeDispose.dir/DependInfo.cmake --color=$(COLOR)
+	cd /home/nano/Desktop/MyOwnLime/Lime/build && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /home/nano/Desktop/MyOwnLime/Lime /home/nano/Desktop/MyOwnLime/Lime /home/nano/Desktop/MyOwnLime/Lime/build /home/nano/Desktop/MyOwnLime/Lime/build /home/nano/Desktop/MyOwnLime/Lime/build/CMakeFiles/LimeDispose.dir/DependInfo.cmake --color=$(COLOR)
 .PHONY : CMakeFiles/LimeDispose.dir/depend
 

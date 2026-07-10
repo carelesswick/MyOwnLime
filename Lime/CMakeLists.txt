@@ -9,8 +9,6 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-set(OpenCV_DIR "/usr/lib/x86_64-linux-gnu/cmake/opencv4")
-
 # 4. 寻找第三方库
 find_package(OpenCV REQUIRED)
 

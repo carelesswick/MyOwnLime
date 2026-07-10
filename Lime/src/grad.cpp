@@ -1,5 +1,6 @@
 #include "grade.h"
 #include <opencv2/opencv.hpp>
+#include <arm_neon.h>
 
 
 //对初始最大光照图进行梯度的求解
@@ -23,15 +24,24 @@ cv::Mat ComputeGradientX(const cv::Mat& img){
         const float* img_row_ptr = img.ptr<float>(i);//读取第i行的首指针
         float* gx_row_ptr = GradientX.ptr<float>(i);//输出的第i行的首指针
 
-        for (int j = 0; j < img.cols - 1;++j){
-            //at在每次调用时都会检查越界的情况，存在性能开销，带有性能开销 后续需要改进
-            // GradientX.at<float>(i,j) = img.at<float>(i,j+1) - img.at<float>(i,j);
+        int j = 0;
 
+        for(;j <= img.cols-5;j+=4){
+            float32x4_t previous = vld1q_f32(img_row_ptr+j);
+            float32x4_t next = vld1q_f32(img_row_ptr+1+j);//注意最后一位是j+4不是j+5
 
-            // 等价于指针偏移：*(gx_row_ptr + j) = *(img_row_ptr + j + 1) - *(img_row_ptr + j);
-            gx_row_ptr[j] = img_row_ptr[j + 1] - img_row_ptr[j];
-
+            float32x4_t sub = vsubq_f32(next,previous);
+            vst1q_f32(gx_row_ptr+j,sub);
         }
+        for(;j < img.cols-1;++j){
+            gx_row_ptr[j] = img_row_ptr[j + 1] - img_row_ptr[j];
+        }
+        // for (int j = 0; j < img.cols - 1;++j){
+        //     //at在每次调用时都会检查越界的情况，存在性能开销，带有性能开销 后续需要改进
+        //     // GradientX.at<float>(i,j) = img.at<float>(i,j+1) - img.at<float>(i,j);
+        //     // 等价于指针偏移：*(gx_row_ptr + j) = *(img_row_ptr + j + 1) - *(img_row_ptr + j);
+        //     gx_row_ptr[j] = img_row_ptr[j + 1] - img_row_ptr[j];
+        // }
     }
     return GradientX;
 
@@ -51,12 +61,22 @@ cv::Mat ComputeGradientY(const cv::Mat& img){
         const float* next_row = img.ptr<float>(i + 1);
         float* gy_row_ptr = GradientY.ptr<float>(i);
 
-
-        for(int j = 0;j < img.cols;++j){
-            // GradientY.at<float>(i,j) = img.at<float>(i+1,j) - img.at<float>(i,j);
-            gy_row_ptr[j] = next_row[j] - curr_row[j];
+        int j = 0;
+        for(;j <=img.cols - 4;j+=4){
+            float32x4_t previous = vld1q_f32(curr_row+j);
+            float32x4_t next = vld1q_f32(next_row+j);
+            float32x4_t sub = vsubq_f32(next,previous);
+            vst1q_f32(gy_row_ptr+j,sub);
         }
-    
+        for(;j<img.cols;++j){
+            gy_row_ptr[j] = next_row[j] - curr_row[j];
+
+        }
+
+        // for(int j = 0;j < img.cols;++j){
+        //     // GradientY.at<float>(i,j) = img.at<float>(i+1,j) - img.at<float>(i,j);
+        //     gy_row_ptr[j] = next_row[j] - curr_row[j];
+        // }
     }
     return GradientY;
 }

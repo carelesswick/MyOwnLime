@@ -54,10 +54,10 @@ RM = /usr/bin/cmake -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/my2204/MyOwnLime/Lime
+CMAKE_SOURCE_DIR = /home/nano/Desktop/MyOwnLime/Lime
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/my2204/MyOwnLime/Lime/build
+CMAKE_BINARY_DIR = /home/nano/Desktop/MyOwnLime/Lime/build
 
 #=============================================================================
 # Directory level rules for the build root directory
@@ -81,14 +81,14 @@ clean: CMakeFiles/LimeDispose.dir/clean
 CMakeFiles/LimeDispose.dir/all:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/LimeDispose.dir/build.make CMakeFiles/LimeDispose.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/LimeDispose.dir/build.make CMakeFiles/LimeDispose.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/my2204/MyOwnLime/Lime/build/CMakeFiles --progress-num=1,2,3,4 "Built target LimeDispose"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/home/nano/Desktop/MyOwnLime/Lime/build/CMakeFiles --progress-num=1,2,3,4 "Built target LimeDispose"
 .PHONY : CMakeFiles/LimeDispose.dir/all
 
 # Build rule for subdir invocation for target.
 CMakeFiles/LimeDispose.dir/rule: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/my2204/MyOwnLime/Lime/build/CMakeFiles 4
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/nano/Desktop/MyOwnLime/Lime/build/CMakeFiles 4
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 CMakeFiles/LimeDispose.dir/all
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/my2204/MyOwnLime/Lime/build/CMakeFiles 0
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/nano/Desktop/MyOwnLime/Lime/build/CMakeFiles 0
 .PHONY : CMakeFiles/LimeDispose.dir/rule
 
 # Convenience name for target.

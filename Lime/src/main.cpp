@@ -116,7 +116,7 @@ int main()
     // cv::imshow("1. 原始低照度图", floatimg);
     // cv::imshow("2. 初始最大光照图", MaxLight3Channel);
     // cv::imshow("4. ADMM优化后光照图", T);
-    cv::imshow("5. LIME最终增强结果", enhanced_img);
+    // cv::imshow("5. LIME最终增强结果", enhanced_img);
     std::cout<<"去噪用时："<<tm2.getTimeSec()<<std::endl;
 
     cv::imwrite(output_dir + "lime.jpg", enhanced_8u);
