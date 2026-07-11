@@ -223,6 +223,7 @@ cv::Mat ComputeDivergence(
     return div;
 }
 
+//不要把不变的数学计算放在循环里重复算
 /**
  * @brief 生成离散五点拉普拉斯算子的频域核（对应前向梯度+后向散度的离散格式）
  * @param size  输入图像尺寸
@@ -231,23 +232,30 @@ cv::Mat ComputeDivergence(
  */
 cv::Mat GenerateLaplacianFreqKernel(cv::Size size, float rho)
 {
-    int H = size.height;
-    int W = size.width;
-    cv::Mat kernel(H, W, CV_32FC1);
+    static cv::Mat g_laplacian_freq_cache;
+    static cv::Size g_cached_size(0, 0);
 
-    for (int v = 0; v < H; v++)    // v: 行方向频率索引
+    if (g_cached_size != size)
     {
-        for (int u = 0; u < W; u++) // u: 列方向频率索引
-        {
-            // 离散五点拉普拉斯的标准频域响应公式
-            float cos_u = cosf(2.0f * (float)M_PI * u / W);
-            float cos_v = cosf(2.0f * (float)M_PI * v / H);
-            float laplacian_freq = 2.0f * cos_u + 2.0f * cos_v - 4.0f;
+        int H = size.height;
+        int W = size.width;
+        g_laplacian_freq_cache.create(H, W, CV_32FC1);
 
-            // 对应算子 (2I - ρ·∇²) 的频域响应
-            kernel.at<float>(v, u) = 2.0f - rho * laplacian_freq;
+        for (int v = 0; v < H; v++)
+        {
+            for (int u = 0; u < W; u++)
+            {
+                float cos_u = cosf(2.0f * (float)M_PI * u / W);
+                float cos_v = cosf(2.0f * (float)M_PI * v / H);
+                g_laplacian_freq_cache.at<float>(v, u) = 2.0f * cos_u + 2.0f * cos_v - 4.0f;
+            }
         }
+        g_cached_size = size;
     }
+
+    // 🔥 直接用 OpenCV 的矩阵运算替代 for 循环
+    cv::Mat kernel = 2.0 - rho * g_laplacian_freq_cache;
+    
     return kernel;
 }
 

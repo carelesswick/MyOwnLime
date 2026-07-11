@@ -37,6 +37,7 @@ cv::Mat ComputeDivergence(
     const cv::Mat& gy);
 
 
+
 /**
  * @brief 生成离散五点拉普拉斯算子的频域核（对应前向梯度+后向散度的离散格式）
  * @param size  输入图像尺寸
