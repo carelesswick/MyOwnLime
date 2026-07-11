@@ -101,40 +101,61 @@ cv::Mat ComputeWeight(const cv::Mat& gradientx, const cv::Mat& gradienty)
     return weight;
 }
 
-
-//软阈值函数,但是呢此时的都是for循环，后续可以改成SIMD的优化
-cv::Mat SoftThreshold(const cv::Mat& value,const cv::Mat& threshold)
+//软阈值函数改成SIMD的优化
+cv::Mat SoftThreshold(const cv::Mat& value, const cv::Mat& threshold)
 {
-    CV_Assert(value.type() == CV_32FC1);
-    CV_Assert(threshold.type() == CV_32FC1);
+    CV_Assert(value.type() == CV_32FC1 && threshold.type() == CV_32FC1);
     CV_Assert(value.size() == threshold.size());
 
     cv::Mat output(value.size(), CV_32FC1);
+    int cols = value.cols;
 
-    // 遍历每个像素
-    for(int i = 0; i < value.rows; ++i)
+    // 预定义常量向量
+    const float32x4_t zero_vec = vdupq_n_f32(0.0f);
+    const float32x4_t one_vec = vdupq_n_f32(1.0f);
+    const float32x4_t neg_one_vec = vdupq_n_f32(-1.0f);
+
+    for (int i = 0; i < value.rows; ++i)
     {
-        const float* value_row = value.ptr<float>(i);
-        const float* threshold_row = threshold.ptr<float>(i);
-        float* output_row = output.ptr<float>(i);
+        const float* d_ptr = value.ptr<float>(i);
+        const float* th_ptr = threshold.ptr<float>(i);
+        float* out_ptr = output.ptr<float>(i);
 
-        for(int j = 0; j < value.cols; ++j)
+        int j = 0;
+        // 批量4像素NEON循环
+        for (; j <= cols - 4; j += 4)
         {
-            float d = value_row[j];
-            float lambda = threshold_row[j];
+            float32x4_t d = vld1q_f32(d_ptr + j);
+            float32x4_t th = vld1q_f32(th_ptr + j);
 
-            float sign = 0.f;
-            if(d > 0)
-                sign = 1.f;
-            else if(d < 0)
-                sign = -1.f;
+            float32x4_t abs_d = vabsq_f32(d);
+            float32x4_t diff = vsubq_f32(abs_d, th);
+            diff = vmaxq_f32(diff, zero_vec);
 
-            output_row[j] = sign * std::max(std::abs(d) - lambda, 0.0f);
+            // 计算符号向量（修复核心报错部分）
+            uint32x4_t mask_pos = vcgtq_f32(d, zero_vec);
+            uint32x4_t mask_neg = vcltq_f32(d, zero_vec);
+            float32x4_t sign_pos = vbslq_f32(mask_pos, one_vec, zero_vec);
+            float32x4_t sign_neg = vbslq_f32(mask_neg, neg_one_vec, zero_vec);
+            float32x4_t sign = vaddq_f32(sign_pos, sign_neg);
+
+            // 软阈值结果
+            float32x4_t res = vmulq_f32(sign, diff);
+            vst1q_f32(out_ptr + j, res);
+        }
+
+        // 尾部不足4个像素串行兜底
+        for (; j < cols; ++j)
+        {
+            float d = d_ptr[j];
+            float lambda = th_ptr[j];
+            float abs_d = fabsf(d);
+            out_ptr[j] = abs_d > lambda ? copysignf(abs_d - lambda, d) : 0.0f;
         }
     }
-
     return output;
 }
+
 
 cv::Mat SolveG(
     const cv::Mat& T,
@@ -274,6 +295,8 @@ cv::Mat SolveT(
         s_inv_kernel = cv::Mat(optH, optW, CV_32FC1);
         s_opt_sz     = pad_sz;
     }
+    cv::TickMeter tm;
+    double t_kernel = 0, t_div = 0, t_fft_fwd = 0, t_freq_mul = 0, t_fft_inv = 0;
 
     // ====== 步骤1：b = G + Λ/ρ ======
     const float inv_rho = 1.0f / rho;
@@ -282,18 +305,23 @@ cv::Mat SolveT(
     cv::scaleAdd(lambda_y, inv_rho, G_y, b_y);
 
     // ====== 步骤2：div(b) ======
+    tm.reset();tm.start();
     cv::Mat div_b = ComputeDivergence(b_x, b_y);
+    tm.stop();t_div = tm.getTimeMilli();
 
     // ====== 步骤3：rhs = 2·T_hat - ρ·div_b ======
     cv::Mat rhs, rhs_padded;
     cv::scaleAdd(div_b, -rho, 2.0f * T_hat, rhs);
 
     // ====== 步骤4：生成频域核 + 倒数 ======
+    tm.reset(); tm.start();
     cv::Mat kernel = GenerateLaplacianFreqKernel(
         need_pad ? pad_sz : sz, rho);
     cv::divide(1.0f, kernel, s_inv_kernel);   // s_inv_kernel = 1/kernel
+    tm.stop(); t_kernel = tm.getTimeMilli();
 
     // ====== 步骤5：rhs padding 到最优 FFT 尺寸 + 正 FFT ======
+    tm.reset(); tm.start();
     if (need_pad)
     {
         cv::copyMakeBorder(rhs, rhs_padded,
@@ -304,8 +332,10 @@ cv::Mat SolveT(
     {
         cv::dft(rhs, s_fft, cv::DFT_COMPLEX_OUTPUT);
     }
+    tm.stop(); t_fft_fwd = tm.getTimeMilli();
 
     // ====== 步骤6：频域乘法（s_fft × inv_kernel，就地修改）======
+    tm.reset(); tm.start();
     {
         const int   total = optH * optW;
         float*      ptr   = s_fft.ptr<float>(0);
@@ -317,8 +347,10 @@ cv::Mat SolveT(
             ptr += 2;
         }
     }
+    tm.stop(); t_freq_mul = tm.getTimeMilli();
 
     // ====== 步骤7：逆 FFT + 裁剪回原尺寸 ======
+    tm.reset(); tm.start();
     cv::Mat T_padded, T;
     cv::idft(s_fft, T_padded, cv::DFT_SCALE | cv::DFT_REAL_OUTPUT);
 
@@ -331,6 +363,23 @@ cv::Mat SolveT(
         T = T_padded;
     }
     T.convertTo(T, CV_32FC1);
+    tm.stop(); t_fft_inv = tm.getTimeMilli();
+
+    static int solveT_call_count = 0;
+    solveT_call_count++;
+    if (solveT_call_count == 1 || solveT_call_count == 10)
+    {
+          std::cout << "    SolveT 内部 (第" << solveT_call_count << "次):" << std::endl;
+          std::cout << "      Divergence:      " << t_div      << " ms" << std::endl;
+          std::cout << "      FreqKernel+inv:  " << t_kernel    << " ms" << std::endl;
+          std::cout << "      FFT forward:     " << t_fft_fwd  << " ms" << std::endl;
+          std::cout << "      Freq multiply:   " << t_freq_mul << " ms" << std::endl;
+          std::cout << "      FFT inverse:     " << t_fft_inv  << " ms" << std::endl;
+          std::cout << "      SolveT 合计:     "
+                    << (t_div + t_kernel + t_fft_fwd + t_freq_mul + t_fft_inv)
+                    << " ms" << std::endl;
+    }
+
 
     // ====== 步骤8：裁剪 T 到合理范围 ======
     cv::max(T, 0.001f, T);
@@ -352,6 +401,8 @@ cv::Mat SolveT(
  * @param lambda_x  输入/输出：对偶变量水平分量
  * @param lambda_y  输入/输出：对偶变量垂直分量
  */
+static int s_admm_call_count = 0;  // 全局计数器，控制打印频率
+
 void ADMM_Step(
     const cv::Mat& T_hat,
     const cv::Mat& weight,
@@ -363,28 +414,66 @@ void ADMM_Step(
     cv::Mat& lambda_x,
     cv::Mat& lambda_y)
 {
+    cv::TickMeter tm;
+    double t_solveT = 0, t_grad = 0, t_vconcat = 0;
+    double t_solveG = 0, t_split = 0, t_lambda = 0;
+
     // ---------- 步骤1：固定 G、Λ，更新 T ----------
+    tm.start();
     T = SolveT(T_hat, G_x, G_y, lambda_x, lambda_y, rho);
+    tm.stop();
+    t_solveT = tm.getTimeMilli();
 
     // ---------- 步骤2：计算新 T 的梯度 ∇T ----------
+    tm.reset(); tm.start();
     cv::Mat grad_T_x = ComputeGradientX(T);
     cv::Mat grad_T_y = ComputeGradientY(T);
+    tm.stop();
+    t_grad = tm.getTimeMilli();
 
     // ---------- 步骤3：固定 T、Λ，更新 G ----------
     // 适配你原来的拼接式 SolveG 接口：把分量拼成2倍高度矩阵
+    tm.reset(); tm.start();
     cv::Mat grad_T_concat, lambda_concat, G_concat;
     cv::vconcat(grad_T_x, grad_T_y, grad_T_concat);
     cv::vconcat(lambda_x, lambda_y, lambda_concat);
+    tm.stop();
+    t_vconcat = tm.getTimeMilli();
 
+    tm.reset(); tm.start();
     G_concat = SolveG(T, lambda_concat, weight,grad_T_concat, rho, alpha);
+    tm.stop();
+    t_solveG = tm.getTimeMilli();
 
     // 拆分回 x、y 分量
+    tm.reset(); tm.start();
     int H = T.rows;
     G_x = G_concat.rowRange(0, H).clone();
     G_y = G_concat.rowRange(H, 2 * H).clone();
+    tm.stop();
+    t_split = tm.getTimeMilli();
 
     // ---------- 步骤4：更新对偶变量 Λ ----------
     // 对应公式：Λ = Λ + ρ * (G - ∇T)
+    tm.reset(); tm.start();
     lambda_x = lambda_x + rho * (G_x - grad_T_x);
     lambda_y = lambda_y + rho * (G_y - grad_T_y);
+    tm.stop();
+    t_lambda = tm.getTimeMilli();
+
+    // --- 打印：只在第 1 轮和最后一轮打印 ---
+    s_admm_call_count++;
+    if (s_admm_call_count == 1 || s_admm_call_count == 10)
+    {
+        std::cout << "  ADMM_Step 内部 (第" << s_admm_call_count << "次, rho=" << rho << "):" << std::endl;
+        std::cout << "    [1] SolveT:       " << t_solveT   << " ms" << std::endl;
+        std::cout << "    [2] Gradient:     " << t_grad     << " ms" << std::endl;
+        std::cout << "    [3] vconcat:      " << t_vconcat  << " ms" << std::endl;
+        std::cout << "    [4] SolveG:       " << t_solveG   << " ms" << std::endl;
+        std::cout << "    [5] split G:      " << t_split    << " ms" << std::endl;
+        std::cout << "    [6] Lambda:       " << t_lambda   << " ms" << std::endl;
+        std::cout << "    ADMM_Step 合计:   "
+                  << (t_solveT + t_grad + t_vconcat + t_solveG + t_split + t_lambda)
+                  << " ms" << std::endl;
+    }
 }

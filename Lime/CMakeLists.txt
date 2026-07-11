@@ -36,3 +36,13 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
 # 可以写成两句，也可以像下面这样合并成一句，用空格隔开即可
 target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE 
                         ${OpenCV_LIBS})
+
+# ========== 新增：编译优化与 ARM NEON 指令集 ==========
+# ARM64 平台优化配置
+if (CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
+    message(STATUS "检测到 ARM64 架构，启用 armv8 优化")
+    # 方式1：适配所有armv8设备，兼容性好
+    #add_compile_options(-march=armv8-a -O2)
+    # 方式2：本地最优，只在当前板子上跑推荐用这个
+    add_compile_options(-march=native -O2)
+endif()                     

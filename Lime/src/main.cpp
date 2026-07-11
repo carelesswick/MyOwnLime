@@ -71,16 +71,22 @@ int main()
     tm.start();
     for (int iter = 0; iter < max_iter; iter++)
     {
+        cv::TickMeter tm_iter;
+        tm_iter.start();
+
         // 执行单轮迭代：T → G → Λ 依次更新
         ADMM_Step(InitialMaxLight, weight, alpha, rho, T, G_x, G_y, lambda_x, lambda_y);
+
+        tm_iter.stop();
 
         // 递增 rho 加速收敛（论文标准做法）
         rho = std::min(rho * rho_scale, rho_max);
 
-        std::cout << "第 " << iter + 1 << " 轮迭代完成, rho=" << rho << std::endl;
+        std::cout << "第 " << iter + 1 << " 轮, rho=" << rho
+                  << ", 耗时: " << tm_iter.getTimeMilli() << " ms" << std::endl;
     }
     tm.stop(); // 停止计时
-    std::cout << "光照图优化完成!Lime用时:" <<tm.getTimeSec() << std::endl;
+    std::cout << "ADMM 总耗时: " << tm.getTimeSec() << " s" << std::endl;
 
     cv::TickMeter tm2;
     tm2.start(); //计时
