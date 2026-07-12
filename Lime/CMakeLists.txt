@@ -12,6 +12,8 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # 4. 寻找第三方库
 find_package(OpenCV REQUIRED)
 
+find_package(OpenMP REQUIRED)
+
 # -------------------------------------------------------------
 # 【非常重要】在执行任何 target_ 命令之前，必须先生成目标 (Target)！
 # -------------------------------------------------------------
@@ -35,7 +37,8 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
 # 8. 链接库文件（把 OpenCV 和 ImGui 的实际功能绑上来）
 # 可以写成两句，也可以像下面这样合并成一句，用空格隔开即可
 target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE 
-                        ${OpenCV_LIBS})
+                        ${OpenCV_LIBS}
+                        OpenMP::OpenMP_CXX)
 
 # ========== 新增：编译优化与 ARM NEON 指令集 ==========
 # ARM64 平台优化配置

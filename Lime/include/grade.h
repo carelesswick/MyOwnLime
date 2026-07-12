@@ -22,13 +22,12 @@ cv::Mat ComputeWeight(const cv::Mat& gradientx, const cv::Mat& gradienty);
 cv::Mat SoftThreshold(const cv::Mat& value,const cv::Mat& threshold);
 
 
-cv::Mat SolveG(
-    const cv::Mat& T,
+void SolveG(
     const cv::Mat& Lambda,
-    const cv::Mat& Weight,
     const cv::Mat& GradientT,
+    const cv::Mat& inter,
     float rho,
-    float alpha);
+    cv::Mat& G_out);
 
 
 //计算散度
@@ -79,8 +78,7 @@ cv::Mat SolveT(
  */
 void ADMM_Step(
     const cv::Mat& T_hat,
-    const cv::Mat& weight,
-    float alpha,
+    const cv::Mat& inter,
     float rho,
     cv::Mat& T,
     cv::Mat& G_x,

@@ -139,6 +139,8 @@ LimeDispose: /usr/lib/libopencv_features2d.so.4.8.0
 LimeDispose: /usr/lib/libopencv_flann.so.4.8.0
 LimeDispose: /usr/lib/libopencv_imgproc.so.4.8.0
 LimeDispose: /usr/lib/libopencv_core.so.4.8.0
+LimeDispose: /usr/lib/gcc/aarch64-linux-gnu/11/libgomp.so
+LimeDispose: /usr/lib/aarch64-linux-gnu/libpthread.a
 LimeDispose: CMakeFiles/LimeDispose.dir/link.txt
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/nano/Desktop/MyOwnLime/Lime/build/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Linking CXX executable LimeDispose"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/LimeDispose.dir/link.txt --verbose=$(VERBOSE)

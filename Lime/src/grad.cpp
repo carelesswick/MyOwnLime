@@ -1,7 +1,7 @@
 #include "grade.h"
 #include <opencv2/opencv.hpp>
 #include <arm_neon.h>
-
+#include <omp.h>  //多线程
 
 //对初始最大光照图进行梯度的求解
 //求梯度分了方向 后续进行封装
@@ -20,6 +20,7 @@ cv::Mat ComputeGradientX(const cv::Mat& img){
         return {};
     }
 
+#pragma omp parallel for
     for (int i = 0;i < img.rows;++i){
         const float* img_row_ptr = img.ptr<float>(i);//读取第i行的首指针
         float* gx_row_ptr = GradientX.ptr<float>(i);//输出的第i行的首指针
@@ -56,6 +57,7 @@ cv::Mat ComputeGradientY(const cv::Mat& img){
         std::cerr << "Error: Input image is empty or not CV_32FC1" << std::endl;
         return {};
     }
+#pragma omp parallel for
     for( int i = 0;i <img.rows - 1;++i){
         const float* curr_row = img.ptr<float>(i);
         const float* next_row = img.ptr<float>(i + 1);
@@ -157,32 +159,74 @@ cv::Mat SoftThreshold(const cv::Mat& value, const cv::Mat& threshold)
 }
 
 
-cv::Mat SolveG(
-    const cv::Mat& T,
+// 一趟融合：d = GradientT - Lambda/rho, thresh = inter/rho, soft_threshold → G_out
+// 三个逐元素操作合并为一个循环，内存流量从 ~42MB 降到 ~22MB
+void SolveG(
     const cv::Mat& Lambda,
-    const cv::Mat& Weight,
     const cv::Mat& GradientT,
+    const cv::Mat& inter,
     float rho,
-    float alpha)
+    cv::Mat& G_out)
 {
-    // 计算 ∇T,因为之前的梯度是分开算的，因此在这里呢需要把水平方向和竖直方向的梯度拼接起来
-    // cv::Mat GradientX = ComputeGradientX(T);
-    // cv::Mat GradientY = ComputeGradientY(T);
-    // cv::Mat GradientT;
-    // cv::vconcat(GradientX, GradientY, GradientT);
+    G_out.create(GradientT.size(), CV_32FC1);
 
-    // d = ∇T - Λ/ρ
-    cv::Mat d = GradientT - Lambda / rho;
+    const float inv_rho = 1.0f / rho;
+    const int cols = GradientT.cols;
 
-    // λ = αW/ρ
-    cv::Mat threshold = alpha * Weight / rho;//权重是固定的，alpha也是固定的，只有ρ是变化的
+    const float32x4_t zero     = vdupq_n_f32(0.0f);
+    const float32x4_t one      = vdupq_n_f32(1.0f);
+    const float32x4_t neg_one  = vdupq_n_f32(-1.0f);
+    const float32x4_t v_inv    = vdupq_n_f32(inv_rho);
 
-    // Soft Threshold
-    return SoftThreshold(d, threshold);
+    #pragma omp parallel for
+    for (int i = 0; i < GradientT.rows; ++i)
+    {
+        const float* lam_ptr   = Lambda.ptr<float>(i);
+        const float* grad_ptr  = GradientT.ptr<float>(i);
+        const float* inter_ptr = inter.ptr<float>(i);
+        float*       out_ptr   = G_out.ptr<float>(i);
+
+        int j = 0;
+        for (; j <= cols - 4; j += 4)
+        {
+            // 1. 加载三个输入
+            float32x4_t lam   = vld1q_f32(lam_ptr + j);
+            float32x4_t grad  = vld1q_f32(grad_ptr + j);
+            float32x4_t inter = vld1q_f32(inter_ptr + j);
+
+            // 2. d = GradientT - Lambda / rho（vmlsq_f32: a - b*c，一条指令完成乘减）
+            float32x4_t d = vmlsq_f32(grad, lam, v_inv);
+
+            // 3. thresh = inter / rho
+            float32x4_t thresh = vmulq_f32(inter, v_inv);
+
+            // 4. soft_threshold: sign(d) * max(|d| - thresh, 0)
+            float32x4_t abs_d = vabsq_f32(d);
+            float32x4_t diff  = vmaxq_f32(vsubq_f32(abs_d, thresh), zero);
+
+            uint32x4_t mask_pos = vcgtq_f32(d, zero);
+            uint32x4_t mask_neg = vcltq_f32(d, zero);
+            float32x4_t sign = vaddq_f32(
+                vbslq_f32(mask_pos, one, zero),
+                vbslq_f32(mask_neg, neg_one, zero));
+
+            vst1q_f32(out_ptr + j, vmulq_f32(sign, diff));
+        }
+
+        // 尾部标量兜底
+        for (; j < cols; ++j)
+        {
+            float d = grad_ptr[j] - lam_ptr[j] * inv_rho;
+            float thresh = inter_ptr[j] * inv_rho;
+            float abs_d = fabsf(d);
+            out_ptr[j] = abs_d > thresh ? copysignf(abs_d - thresh, d) : 0.0f;
+        }
+    }
+    // std::cout << "OpenCV threads: " << cv::getNumThreads() << std::endl;
 }
 
 
-//计算散度
+//计算散度（后向差分对应着梯度的前向差分）
 cv::Mat ComputeDivergence(
     const cv::Mat& gx,
     const cv::Mat& gy)
@@ -348,11 +392,12 @@ cv::Mat SolveT(
         const int   total = optH * optW;
         float*      ptr   = s_fft.ptr<float>(0);
         const float* invk = s_inv_kernel.ptr<float>(0);
+#pragma omp parallel for
         for (int i = 0; i < total; i++)
         {
-            ptr[0] *= invk[i];
-            ptr[1] *= invk[i];
-            ptr += 2;
+            int idx = 2 * i;
+            ptr[idx]     *= invk[i];
+            ptr[idx + 1] *= invk[i];
         }
     }
     tm.stop(); t_freq_mul = tm.getTimeMilli();
@@ -413,8 +458,7 @@ static int s_admm_call_count = 0;  // 全局计数器，控制打印频率
 
 void ADMM_Step(
     const cv::Mat& T_hat,
-    const cv::Mat& weight,
-    float alpha,
+    const cv::Mat& inter,
     float rho,
     cv::Mat& T,
     cv::Mat& G_x,
@@ -422,6 +466,8 @@ void ADMM_Step(
     cv::Mat& lambda_x,
     cv::Mat& lambda_y)
 {
+    static cv::Mat s_G_concat;  // 复用 buffer
+
     cv::TickMeter tm;
     double t_solveT = 0, t_grad = 0, t_vconcat = 0;
     double t_solveG = 0, t_split = 0, t_lambda = 0;
@@ -440,24 +486,24 @@ void ADMM_Step(
     t_grad = tm.getTimeMilli();
 
     // ---------- 步骤3：固定 T、Λ，更新 G ----------
-    // 适配你原来的拼接式 SolveG 接口：把分量拼成2倍高度矩阵
     tm.reset(); tm.start();
-    cv::Mat grad_T_concat, lambda_concat, G_concat;
+    cv::Mat grad_T_concat, lambda_concat;
     cv::vconcat(grad_T_x, grad_T_y, grad_T_concat);
     cv::vconcat(lambda_x, lambda_y, lambda_concat);
     tm.stop();
     t_vconcat = tm.getTimeMilli();
 
     tm.reset(); tm.start();
-    G_concat = SolveG(T, lambda_concat, weight,grad_T_concat, rho, alpha);
+    s_G_concat.create(grad_T_concat.size(), CV_32FC1);
+    SolveG(lambda_concat, grad_T_concat, inter, rho, s_G_concat);
     tm.stop();
     t_solveG = tm.getTimeMilli();
 
     // 拆分回 x、y 分量
     tm.reset(); tm.start();
     int H = T.rows;
-    G_x = G_concat.rowRange(0, H).clone();
-    G_y = G_concat.rowRange(H, 2 * H).clone();
+    G_x = s_G_concat.rowRange(0, H).clone();
+    G_y = s_G_concat.rowRange(H, 2 * H).clone();
     tm.stop();
     t_split = tm.getTimeMilli();
 

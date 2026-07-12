@@ -6,5 +6,5 @@ CXX_DEFINES =
 
 CXX_INCLUDES = -I/home/nano/Desktop/MyOwnLime/Lime/include -isystem /usr/include/opencv4
 
-CXX_FLAGS = -std=gnu++17
+CXX_FLAGS = -fopenmp -std=gnu++17
 

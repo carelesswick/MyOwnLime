@@ -66,6 +66,9 @@ int main()
     float rho_scale = 2.0f;    // 每轮倍增
     int max_iter    = 10;      // ρ 倍增下 10 轮即可收敛
 
+    // 预计算 α·W，SolveG 循环内不再重复乘 alpha
+    cv::Mat inter = alpha * weight;
+
     std::cout << "开始 ADMM 迭代优化光照图,共 " << max_iter << " 轮..." << std::endl;
     cv::TickMeter tm;
     tm.start();
@@ -75,7 +78,7 @@ int main()
         tm_iter.start();
 
         // 执行单轮迭代：T → G → Λ 依次更新
-        ADMM_Step(InitialMaxLight, weight, alpha, rho, T, G_x, G_y, lambda_x, lambda_y);
+        ADMM_Step(InitialMaxLight, inter, rho, T, G_x, G_y, lambda_x, lambda_y);
 
         tm_iter.stop();
 
