@@ -9,8 +9,8 @@
 
 int main()
 {
-    // std::string test = "../images/dark.png";
-    std::string test = "../images/10.jpg";
+    std::string test = "../images/1.bmp";
+    // std::string test = "../images/10.jpg";
     // std::string input_dir = "../images/";
     std::string output_dir = "../output/";
     cv::Mat floatimg =  GetSrc(test);

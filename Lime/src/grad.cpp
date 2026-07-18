@@ -2,6 +2,8 @@
 #include <opencv2/opencv.hpp>
 #include <arm_neon.h>
 #include <omp.h>  //多线程
+#include <fftw3.h>
+#include <fftw3.h>
 
 //对初始最大光照图进行梯度的求解
 //求梯度分了方向 后续进行封装
@@ -336,16 +338,36 @@ cv::Mat SolveT(
     const int optW = cv::getOptimalDFTSize(W);
     const bool need_pad = (optH != H || optW != W);
 
-    // ------ Buffer 复用：padded 尺寸的 static 缓冲区 ------
-    static cv::Size  s_opt_sz(0, 0);
-    static cv::Mat   s_fft;          // padded 尺寸的频域复数矩阵
-    static cv::Mat   s_inv_kernel;   // padded 尺寸的频域核倒数
+    // ------ FFTW3 Buffer 复用：plan + work buffer 跨迭代缓存 ------
+    // FFTW r2c 输出尺寸为 optH × (optW/2+1)（半复数格式，利用共轭对称性省一半内存）
+    static fftwf_plan     s_plan_fwd  = nullptr;  // 正变换 plan: real → half-complex
+    static fftwf_plan     s_plan_inv  = nullptr;  // 逆变换 plan: half-complex → real
+    static cv::Size       s_plan_sz(0, 0);
+    static float*         s_fftw_buf  = nullptr;  // 实数 buffer（正向输入 / 逆向输出复用）
+    static fftwf_complex* s_fftw_cplx = nullptr;  // 复数 buffer（正向输出 / 逆向输入复用）
+    static cv::Mat        s_inv_kernel;            // 频域核倒数（半复数尺寸）
 
     const cv::Size pad_sz(optW, optH);
-    if (pad_sz != s_opt_sz)
+    if (pad_sz != s_plan_sz)
     {
-        s_inv_kernel = cv::Mat(optH, optW, CV_32FC1);
-        s_opt_sz     = pad_sz;
+        // 销毁旧 plan（必须在分配新 buffer 前，否则 FFTW_MEASURE 会写坏旧 buffer）
+        if (s_plan_fwd) { fftwf_destroy_plan(s_plan_fwd); s_plan_fwd = nullptr; }
+        if (s_plan_inv) { fftwf_destroy_plan(s_plan_inv); s_plan_inv = nullptr; }
+        fftwf_free(s_fftw_buf);
+        fftwf_free(s_fftw_cplx);
+
+        const int N_pixels = optW * optH;
+        const int N_cplx   = optH * (optW / 2 + 1);
+        s_fftw_buf  = fftwf_alloc_real(N_pixels);
+        s_fftw_cplx = fftwf_alloc_complex(N_cplx);
+
+        // FFTW_ESTIMATE: 瞬时建 plan，不做自优化（ARM 上 MEASURE 太慢）
+        s_plan_fwd = fftwf_plan_dft_r2c_2d(optH, optW,
+                        s_fftw_buf, s_fftw_cplx, FFTW_ESTIMATE);
+        s_plan_inv = fftwf_plan_dft_c2r_2d(optH, optW,
+                        s_fftw_cplx, s_fftw_buf, FFTW_ESTIMATE);
+
+        s_plan_sz = pad_sz;
     }
     cv::TickMeter tm;
     double t_kernel = 0, t_div = 0, t_fft_fwd = 0, t_freq_mul = 0, t_fft_inv = 0;
@@ -365,57 +387,74 @@ cv::Mat SolveT(
     cv::Mat rhs, rhs_padded;
     cv::scaleAdd(div_b, -rho, 2.0f * T_hat, rhs);
 
-    // ====== 步骤4：生成频域核 + 倒数 ======
+    // ====== 步骤4：生成频域核倒数（FFTW 半复数格式：W → W/2+1）======
     tm.reset(); tm.start();
-    cv::Mat kernel = GenerateLaplacianFreqKernel(
-        need_pad ? pad_sz : sz, rho);
-    cv::divide(1.0f, kernel, s_inv_kernel);   // s_inv_kernel = 1/kernel
+    {
+        cv::Mat kernel_full = GenerateLaplacianFreqKernel(
+            need_pad ? pad_sz : sz, rho);
+        // FFTW r2c 只输出 optH × (optW/2+1) 个复数 → 核也只需前半列
+        cv::Mat kernel_half = kernel_full(cv::Rect(0, 0, optW / 2 + 1, optH));
+        cv::divide(1.0f, kernel_half, s_inv_kernel);
+    }
     tm.stop(); t_kernel = tm.getTimeMilli();
 
-    // ====== 步骤5：rhs padding 到最优 FFT 尺寸 + 正 FFT ======
+    // ====== 步骤5：正 FFT（FFTW r2c：实数 → 半复数，写入 s_fftw_cplx）======
     tm.reset(); tm.start();
-    if (need_pad)
     {
-        cv::copyMakeBorder(rhs, rhs_padded,
-            0, optH - H, 0, optW - W, cv::BORDER_REFLECT);
-        cv::dft(rhs_padded, s_fft, cv::DFT_COMPLEX_OUTPUT);
-    }
-    else
-    {
-        cv::dft(rhs, s_fft, cv::DFT_COMPLEX_OUTPUT);
+        const int N_pixels = optW * optH;
+        if (need_pad)
+        {
+            cv::copyMakeBorder(rhs, rhs_padded,
+                0, optH - H, 0, optW - W, cv::BORDER_REFLECT);
+            memcpy(s_fftw_buf, rhs_padded.ptr<float>(0), N_pixels * sizeof(float));
+        }
+        else
+        {
+            memcpy(s_fftw_buf, rhs.ptr<float>(0), N_pixels * sizeof(float));
+        }
+        fftwf_execute(s_plan_fwd);   // s_fftw_buf → s_fftw_cplx
     }
     tm.stop(); t_fft_fwd = tm.getTimeMilli();
 
-    // ====== 步骤6：频域乘法（s_fft × inv_kernel，就地修改）======
+    // ====== 步骤6：频域乘法（FFTW 半复数 × inv_kernel，就地修改 s_fftw_cplx）======
     tm.reset(); tm.start();
     {
-        const int   total = optH * optW;
-        float*      ptr   = s_fft.ptr<float>(0);
-        const float* invk = s_inv_kernel.ptr<float>(0);
-#pragma omp parallel for
-        for (int i = 0; i < total; i++)
+        const int   N_cplx = optH * (optW / 2 + 1);
+        const float* invk  = s_inv_kernel.ptr<float>(0);
+
+        #pragma omp parallel for
+        for (int i = 0; i < N_cplx; i++)
         {
-            int idx = 2 * i;
-            ptr[idx]     *= invk[i];
-            ptr[idx + 1] *= invk[i];
+            s_fftw_cplx[i][0] *= invk[i];   // 实部
+            s_fftw_cplx[i][1] *= invk[i];   // 虚部
         }
     }
     tm.stop(); t_freq_mul = tm.getTimeMilli();
 
-    // ====== 步骤7：逆 FFT + 裁剪回原尺寸 ======
+    // ====== 步骤7：逆 FFT + 手动归一化（FFTW 不做 DFT_SCALE，需手动 /N）======
+    cv::Mat T;
     tm.reset(); tm.start();
-    cv::Mat T_padded, T;
-    cv::idft(s_fft, T_padded, cv::DFT_SCALE | cv::DFT_REAL_OUTPUT);
+    fftwf_execute(s_plan_inv);   // s_fftw_cplx → s_fftw_buf（c2r 会破坏输入复数）
+
+    // FFTW 不做归一化，手动除以 N = optW * optH
+    {
+        const float inv_N   = 1.0f / (float)(optW * optH);
+        const int   N_pixels = optW * optH;
+        #pragma omp parallel for
+        for (int i = 0; i < N_pixels; i++)
+            s_fftw_buf[i] *= inv_N;
+    }
 
     if (need_pad)
     {
+        // 用 cv::Mat 包装 FFTW buffer（不拷贝数据），再 crop 回原尺寸
+        cv::Mat T_padded(optH, optW, CV_32FC1, s_fftw_buf);
         T = T_padded(cv::Rect(0, 0, W, H)).clone();
     }
     else
     {
-        T = T_padded;
+        T = cv::Mat(H, W, CV_32FC1, s_fftw_buf).clone();
     }
-    T.convertTo(T, CV_32FC1);
     tm.stop(); t_fft_inv = tm.getTimeMilli();
 
     static int solveT_call_count = 0;
